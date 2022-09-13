@@ -4,11 +4,94 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h"
+#include <fstream>
+#include <stdio.h>
+#include "vec3.h"
+#include "ray.h"
+#include "vec3.h"
+#include "sphere.h"
+#include "helper.h"
+#include "hittable_manager.h"
+#include <memory>
+#include "camera.h"
+
+void write_color(std::ostream& out, const color_t& pixel, int samples_per_pixel);
+void render_to_img();
+color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world);
+
+color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world) {
+
+	hit_info_t hit_info;
+	if (world.hit(ray, 0.0f, infinity, hit_info)) {
+		return 0.5f * (hit_info.normal + vec3_t(1.0f, 1.0f, 1.0f));
+	}
+
+	vec3_t unit_direction = unit_vector(ray.dir);
+	auto t = 0.5 * (unit_direction.y + 1.0);
+	return (1.0 - t) * color_t(1.0, 1.0, 1.0) + t * color_t(0.5, 0.7, 1.0);
+}
+
+void render_to_img() {
+
+	const float aspect_ratio = 16.0f / 9.0f;
+	const float image_width = 800;
+	const float image_height = image_width / aspect_ratio;
+
+	float focal_len = 1.0f;
+	point_t origin(0, 0, 0);
+
+	const vec3_t viewport_height(0.0f, 2.0f, 0.0f);
+	const vec3_t viewport_width(viewport_height.y * aspect_ratio, 0, 0);
+
+	point_t lower_left = origin - viewport_height / 2 - viewport_width / 2 - point_t(0, 0, focal_len);
+
+	std::shared_ptr<sphere_t> sphere = std::make_shared<sphere_t>(point_t(0, 0, -1.0f), 0.5f);
+	std::shared_ptr<sphere_t> sphere2 = std::make_shared<sphere_t>(point_t(0, -100.5f, -1.0f), 100.0f);
+
+	hittable_manager_t world;
+	world.add(sphere);
+	world.add(sphere2);
+
+	std::ofstream image;
+	image.open("output.ppm");
+	image << "P3\n" << image_width << " " << image_height << "\n255\n";
+
+	camera_t camera;
+	int samples_per_pixel = 100;
+
+	for (int row = image_height - 1; row >= 0; row--) {
+		std::cerr << "scanning row " << row << "\n" << std::flush;
+		for (int col = 0; col < image_width; col++) {
+
+			color_t color(0, 0, 0);
+			for (int i = 0; i < samples_per_pixel; i++) {
+				float y = (row + random_float()) / (image_height - 1);
+				float x = (col + random_float()) / (image_width - 1);
+
+				ray_t ray = camera.get_ray(x, y);
+				color_t sample_color = get_ray_color(ray, world);
+				color += sample_color;
+			}
+
+			write_color(image, color, samples_per_pixel);
+		}
+	}
+	image.close();
+
+}
+
+void write_color(std::ostream& out, const color_t& color, int samples_per_pixel) {
+	out << static_cast<int>(256 * clamp(color.x / samples_per_pixel, 0, 0.999f)) << ' '
+		<< static_cast<int>(256 * clamp(color.y / samples_per_pixel, 0, 0.999f)) << ' '
+		<< static_cast<int>(256 * clamp(color.z / samples_per_pixel, 0, 0.999f)) << '\n';
+}
 
 int main(int argc, char* args[]) {
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		throw std::exception("could not initialize sdl");
 	}
+
+	render_to_img();
 
 	// set opengl attributes through sdl
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
