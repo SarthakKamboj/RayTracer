@@ -2,11 +2,15 @@
 
 #include "vec3.h"
 #include "ray.h"
+#include <memory>
+
+class material_t;
 
 struct hit_info_t {
 	point_t point;
 	vec3_t normal;
 	float t;
+	std::shared_ptr<material_t> mat_ptr;
 };
 
 class hittable {

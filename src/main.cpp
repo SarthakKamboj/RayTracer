@@ -14,16 +14,30 @@
 #include "hittable_manager.h"
 #include <memory>
 #include "camera.h"
+#include <math.h>
+#include "materials.h"
 
 void write_color(std::ostream& out, const color_t& pixel, int samples_per_pixel);
 void render_to_img();
-color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world);
+color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world, int depth);
 
-color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world) {
+color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world, int depth) {
+
+	if (depth <= 0) return color_t(0, 0, 0);
 
 	hit_info_t hit_info;
-	if (world.hit(ray, 0.0f, infinity, hit_info)) {
-		return 0.5f * (hit_info.normal + vec3_t(1.0f, 1.0f, 1.0f));
+	if (world.hit(ray, 0.0001f, infinity, hit_info)) {
+		// point_t new_ray_target = hit_info.point + hit_info.normal + random_unit_vector();
+		// point_t new_ray_target = random_in_hemisphere(hit_info.normal);
+		// vec3_t dir = new_ray_target - hit_info.point;
+		// send ray in random direction and use color of whatever it hits
+		color_t atten;
+		ray_t scatter_ray;
+		if (hit_info.mat_ptr->scatter(ray, hit_info, atten, scatter_ray)) {
+			return atten * get_ray_color(scatter_ray, world, depth - 1);
+		}
+		return color_t(0, 0, 0);
+		// return 0.5f * get_ray_color(ray_t(hit_info.point, dir), world, depth - 1);
 	}
 
 	vec3_t unit_direction = unit_vector(ray.dir);
@@ -45,23 +59,45 @@ void render_to_img() {
 
 	point_t lower_left = origin - viewport_height / 2 - viewport_width / 2 - point_t(0, 0, focal_len);
 
-	std::shared_ptr<sphere_t> sphere = std::make_shared<sphere_t>(point_t(0, 0, -1.0f), 0.5f);
-	std::shared_ptr<sphere_t> sphere2 = std::make_shared<sphere_t>(point_t(0, -100.5f, -1.0f), 100.0f);
+	// std::shared_ptr<lambertian_t> lam_mat = std::make_shared<lambertian_t>(color_t(0.5f, 0.5f, 0.5f));
+
+	// std::shared_ptr<sphere_t> sphere = std::make_shared<sphere_t>(point_t(0, 0, -1.0f), 0.5f, lam_mat);
+	// std::shared_ptr<sphere_t> sphere2 = std::make_shared<sphere_t>(point_t(0, -100.5f, -1.0f), 100.0f, lam_mat);
 
 	hittable_manager_t world;
-	world.add(sphere);
+
+	auto material_ground = std::make_shared<lambertian_t>(color_t(0.8f, 0.8f, 0.0f));
+	auto material_center = std::make_shared<lambertian_t>(color_t(0.7f, 0.3f, 0.3f));
+	auto material_left = std::make_shared<metal_t>(color_t(0.8f, 0.8f, 0.8f));
+	auto material_right = std::make_shared<metal_t>(color_t(0.8f, 0.6f, 0.2f));
+
+	auto sphere1 = std::make_shared<sphere_t>(point_t(0.0f, -100.5f, -1.0f), 100.0f, material_ground);
+	// auto sphere1 = std::make_shared<sphere_t>(point_t(0.0, -100.5, -1.0), 100.0, material_ground);
+	auto sphere2 = std::make_shared<sphere_t>(point_t(0.0, 0.0, -1.0), 0.5, material_center);
+	// auto sphere2 = std::make_shared<sphere_t>(point_t(0.0f, 0.0f, -1.0f), 0.5f, material_left);
+	auto sphere3 = std::make_shared<sphere_t>(point_t(-1.0f, 0.0f, -1.0f), 0.5f, material_left);
+	auto sphere4 = std::make_shared<sphere_t>(point_t(1.0f, 0.0f, -1.0f), 0.5f, material_right);
+	// auto sphere4 = std::make_shared<sphere_t>(point_t(0.0f, 100.0f, -1.0f), 0.5f, material_right);
+
+	world.add(sphere1);
 	world.add(sphere2);
+	world.add(sphere3);
+	world.add(sphere4);
+
+	// world.add(sphere);
+	// world.add(sphere2);
 
 	std::ofstream image;
-	image.open("output.ppm");
+	image.open("new.ppm");
 	image << "P3\n" << image_width << " " << image_height << "\n255\n";
 
 	camera_t camera;
 	int samples_per_pixel = 100;
+	int max_depth = 50;
 
 	for (int row = image_height - 1; row >= 0; row--) {
-		std::cerr << "scanning row " << row << "\n" << std::flush;
 		for (int col = 0; col < image_width; col++) {
+			std::cerr << "scanning row " << row << " and col " << col << "\n" << std::flush;
 
 			color_t color(0, 0, 0);
 			for (int i = 0; i < samples_per_pixel; i++) {
@@ -69,7 +105,7 @@ void render_to_img() {
 				float x = (col + random_float()) / (image_width - 1);
 
 				ray_t ray = camera.get_ray(x, y);
-				color_t sample_color = get_ray_color(ray, world);
+				color_t sample_color = get_ray_color(ray, world, max_depth);
 				color += sample_color;
 			}
 
@@ -81,9 +117,9 @@ void render_to_img() {
 }
 
 void write_color(std::ostream& out, const color_t& color, int samples_per_pixel) {
-	out << static_cast<int>(256 * clamp(color.x / samples_per_pixel, 0, 0.999f)) << ' '
-		<< static_cast<int>(256 * clamp(color.y / samples_per_pixel, 0, 0.999f)) << ' '
-		<< static_cast<int>(256 * clamp(color.z / samples_per_pixel, 0, 0.999f)) << '\n';
+	out << static_cast<int>(256 * clamp(sqrt(color.x / samples_per_pixel), 0.0f, 0.999f)) << ' '
+		<< static_cast<int>(256 * clamp(sqrt(color.y / samples_per_pixel), 0.0f, 0.999f)) << ' '
+		<< static_cast<int>(256 * clamp(sqrt(color.z / samples_per_pixel), 0.0f, 0.999f)) << '\n';
 }
 
 int main(int argc, char* args[]) {

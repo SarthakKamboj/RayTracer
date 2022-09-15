@@ -2,10 +2,12 @@
 
 #include "vec3.h"
 #include "hit.h"
+#include <memory>
+#include "material.h"
 
 class sphere_t : public hittable {
 public:
-	sphere_t(point_t _center, float _radius) : center(_center), radius(_radius) {}
+	sphere_t(point_t _center, float _radius, std::shared_ptr<material_t> _mat) : center(_center), radius(_radius), mat(_mat) {}
 
 	virtual bool hit(const ray_t& ray, float t_min, float t_max, hit_info_t& hit_info) const override {
 		float a = dot(ray.dir, ray.dir);
@@ -49,9 +51,12 @@ public:
 			hit_info.t = val2;
 		}
 
+		hit_info.mat_ptr = mat;
+
 		return true;
 	}
 
 	point_t center;
 	float radius;
+	std::shared_ptr<material_t> mat;
 };
