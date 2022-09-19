@@ -31,6 +31,7 @@ public:
 			return false;
 		}
 
+#if 0
 		point_t hit1 = ray.at(val1);
 		point_t hit2 = ray.at(val2);
 
@@ -44,12 +45,35 @@ public:
 			hit_info.point = hit1;
 			hit_info.normal = unit_vector(normal1);
 			hit_info.t = val1;
+			hit_info.front_face = false;
 		}
 		else {
 			hit_info.point = hit2;
 			hit_info.normal = unit_vector(normal2);
 			hit_info.t = val2;
+			hit_info.front_face = false;
 		}
+#else
+
+		float t_val = 0;
+		if (val1 < t_min || val1 > t_max) {
+			t_val = val2;
+		}
+		else if (val2 < t_min || val2 > t_max) {
+			t_val = val1;
+		}
+		else {
+			t_val = fmin(val1, val2);
+		}
+
+		// float t_val = fmax(val1, val2);
+		point_t hit_pt = ray.at(t_val);
+		vec3_t outward_normal = unit_vector(hit_pt - center);
+		hit_info.t = t_val;
+		hit_info.point = hit_pt;
+		hit_info.set_front_face(ray, outward_normal);
+
+#endif
 
 		hit_info.mat_ptr = mat;
 

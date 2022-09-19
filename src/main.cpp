@@ -48,7 +48,7 @@ color_t get_ray_color(const ray_t& ray, const hittable_manager_t& world, int dep
 void render_to_img() {
 
 	const float aspect_ratio = 16.0f / 9.0f;
-	const float image_width = 800;
+	const float image_width = 200;
 	const float image_height = image_width / aspect_ratio;
 
 	float focal_len = 1.0f;
@@ -66,10 +66,17 @@ void render_to_img() {
 
 	hittable_manager_t world;
 
-	auto material_ground = std::make_shared<lambertian_t>(color_t(0.8f, 0.8f, 0.0f));
-	auto material_center = std::make_shared<lambertian_t>(color_t(0.7f, 0.3f, 0.3f));
-	auto material_left = std::make_shared<metal_t>(color_t(0.8f, 0.8f, 0.8f));
-	auto material_right = std::make_shared<metal_t>(color_t(0.8f, 0.6f, 0.2f));
+#if 0
+	auto material_ground = std::make_shared<lambertian_t>(color_t(0.8, 0.8, 0.0));
+	auto material_center = std::make_shared<lambertian_t>(color_t(0.1, 0.2, 0.5));
+	auto material_left = std::make_shared<dielectric_t>(1.5f);
+	auto material_right = std::make_shared<metal_t>(color_t(0.8, 0.6, 0.2));
+	// auto material_ground = std::make_shared<lambertian_t>(color_t(0.8f, 0.8f, 0.0f));
+	// auto material_center = std::make_shared<lambertian_t>(color_t(0.7f, 0.3f, 0.3f));
+	// auto material_left = std::make_shared<metal_t>(color_t(0.8f, 0.8f, 0.8f));
+	// auto material_right = std::make_shared<dielectric_t>(1.5f);
+	// auto material_left = std::make_shared<dielectric_t>(1.5f);
+	// auto material_right = std::make_shared<metal_t>(color_t(0.8f, 0.6f, 0.2f));
 
 	auto sphere1 = std::make_shared<sphere_t>(point_t(0.0f, -100.5f, -1.0f), 100.0f, material_ground);
 	// auto sphere1 = std::make_shared<sphere_t>(point_t(0.0, -100.5, -1.0), 100.0, material_ground);
@@ -83,15 +90,42 @@ void render_to_img() {
 	world.add(sphere2);
 	world.add(sphere3);
 	world.add(sphere4);
+	world.add(std::make_shared<sphere_t>(point_t(-1.0, 0.0, -1.0), -0.4f, material_left));
 
 	// world.add(sphere);
 	// world.add(sphere2);
+#endif
+
+#if 0
+	auto R = cos(pi / 4);
+
+	auto material_left = std::make_shared<lambertian_t>(color_t(0, 0, 1));
+	auto material_right = std::make_shared<lambertian_t>(color_t(1, 0, 0));
+
+	world.add(std::make_shared<sphere_t>(point_t(-R, 0, -1), R, material_left));
+	world.add(std::make_shared<sphere_t>(point_t(R, 0, -1), R, material_right));
+#endif
+
+	auto material_ground = std::make_shared<lambertian_t>(color_t(0.8, 0.8, 0.0));
+	auto material_center = std::make_shared<lambertian_t>(color_t(0.1, 0.2, 0.5));
+	auto material_left = std::make_shared<dielectric_t>(1.5);
+	auto material_right = std::make_shared<metal_t>(color_t(0.8, 0.6, 0.2));
+
+	world.add(std::make_shared<sphere_t>(point_t(0.0, -100.5, -1.0), 100.0, material_ground));
+	world.add(std::make_shared<sphere_t>(point_t(0.0, 0.0, -1.0), 0.5, material_center));
+	world.add(std::make_shared<sphere_t>(point_t(-1.0, 0.0, -1.0), 0.5, material_left));
+	world.add(std::make_shared<sphere_t>(point_t(-1.0, 0.0, -1.0), -0.45, material_left));
+	world.add(std::make_shared<sphere_t>(point_t(1.0, 0.0, -1.0), 0.5, material_right));
+
+	// Camera
+
+	camera_t camera(aspect_ratio, 90.0f, point_t(-2, 2, 1), point_t(0, 0, -1));
 
 	std::ofstream image;
 	image.open("new.ppm");
 	image << "P3\n" << image_width << " " << image_height << "\n255\n";
 
-	camera_t camera;
+	// camera_t camera;
 	int samples_per_pixel = 100;
 	int max_depth = 50;
 

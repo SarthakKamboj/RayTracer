@@ -117,7 +117,13 @@ vec3_t reflect(const vec3_t& in, const vec3_t& normal) {
 	vec3_t normal_proj = proj * normal;
 	vec3_t offset = -2.0f * normal_proj;
 	return add_vec3(in, offset);
-	// return in + offset;
+}
+
+vec3_t refract(const vec3_t& uv, const vec3_t& n, float etai_over_etat) {
+	auto cos_theta = fmin(dot(-uv, n), 1.0);
+	vec3_t r_out_perp = etai_over_etat * add_vec3(uv, cos_theta * n);
+	vec3_t r_out_parallel = -sqrt(fabs(1.0 - (pow(r_out_perp.length(), 2)))) * n;
+	return add_vec3(r_out_perp, r_out_parallel);
 }
 
 vec3_t random_unit_vector() {

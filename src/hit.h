@@ -11,6 +11,12 @@ struct hit_info_t {
 	vec3_t normal;
 	float t;
 	std::shared_ptr<material_t> mat_ptr;
+	bool front_face;
+
+	void set_front_face(const ray_t& ray, const vec3_t& outward_normal) {
+		front_face = dot(ray.dir, outward_normal) < 0;
+		normal = front_face ? outward_normal : -outward_normal;
+	}
 };
 
 class hittable {
