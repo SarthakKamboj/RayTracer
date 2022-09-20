@@ -62,6 +62,10 @@ public:
 		const auto s = 1e-8;
 		return (fabs(x) < s) && (fabs(y) < s) && (fabs(z) < s);
 	}
+
+	static vec3_t random() {
+		return vec3_t(random_float(), random_float(), random_float());
+	}
 };
 
 inline std::ostream& operator<<(std::ostream& out, const vec3_t& vec) {
@@ -136,6 +140,14 @@ vec3_t random_in_hemisphere(vec3_t normal) {
 		return random_dir;
 	}
 	return -random_dir;
+}
+
+vec3_t random_in_unit_disk() {
+	while (true) {
+		auto p = vec3_t(random_float(-1.0f, 1.0f), random_float(-1.0f, 1.0f), 0);
+		if (pow(p.length(), 2) >= 1) continue;
+		return p;
+	}
 }
 
 inline vec3_t operator+(const vec3_t& u, const vec3_t& v) {
